@@ -20,7 +20,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
   ClipRect topRightChild;
   ClipRect bottomLeftChild;
   ClipRect bottomRightChild;
-  AnimationController _flipLeftStep1Controller,_flipLeftStep2Controller, _flipRightStep1Controller,_flipRightStep2Controller;
+  AnimationController _flipLeftController, _flipRightSController;
   Animation _flipLeftAnimationStep1, _flipLeftAnimationStep2;
   Animation _flipRightAnimationStep1, _flipRightAnimationStep2;
   bool isLeft = true; /*往哪个方向翻转 true 向左 false 向右*/
@@ -66,36 +66,26 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _flipLeftStep1Controller =
-        AnimationController(vsync: this, duration: Duration(seconds: 2));
-
-    _flipLeftStep2Controller =
+    _flipLeftController =
         AnimationController(vsync: this, duration: Duration(seconds: 2));
 
     _flipLeftAnimationStep1 = Tween(begin: .0, end: pi / 2).animate(
-        CurvedAnimation(parent: _flipLeftStep1Controller, curve: Interval(.0, 1.0)));
+        CurvedAnimation(parent: _flipLeftController, curve: Interval(.0, .5)));
     _flipLeftAnimationStep2 = Tween(begin: -pi / 2, end: 0.0).animate(
-        CurvedAnimation(parent: _flipLeftStep2Controller, curve: Interval(.0, 1.0)));
+        CurvedAnimation(parent: _flipLeftController, curve: Interval(.5, 1.0)));
 
-
-    _flipRightStep1Controller =
-        AnimationController(vsync: this, duration: Duration(seconds: 2));
-    _flipRightStep2Controller =
+    _flipRightSController =
         AnimationController(vsync: this, duration: Duration(seconds: 2));
 
     _flipRightAnimationStep1 = Tween(begin: .0, end: -pi / 2).animate(
-        CurvedAnimation(parent: _flipRightStep1Controller, curve: Interval(.0, 1.0)));
+        CurvedAnimation(parent: _flipRightSController, curve: Interval(.0, .5)));
     _flipRightAnimationStep2 = Tween(begin: pi / 2, end: 0.0).animate(
         CurvedAnimation(
-            parent: _flipRightStep2Controller, curve: Interval(.0, 1.0)));
+            parent: _flipRightSController, curve: Interval(.5, 1.0)));
 
-    _flipLeftStep1Controller.addStatusListener(step1StatusListener);
+    _flipLeftController.addStatusListener(step1StatusListener);
 
-    _flipLeftStep2Controller.addStatusListener(step2StatusListener);
-
-    _flipRightStep1Controller.addStatusListener(step1StatusListener);
-
-    _flipRightStep2Controller.addStatusListener(step2StatusListener);
+    _flipRightSController.addStatusListener(step1StatusListener);
 
     contentChange();
   }
@@ -103,26 +93,14 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
   void step1StatusListener(AnimationStatus status){
     if(status == AnimationStatus.forward){
       isAnimation = true;
-    }
-
-    if(status == AnimationStatus.completed){
       setState(() {
       });
-      isLeft ? _flipLeftStep2Controller.forward() : _flipRightStep2Controller.forward();
     }
-  }
 
-  void step2StatusListener(AnimationStatus status){
     if(status == AnimationStatus.completed){
+      isLeft ? _flipLeftController.reset(): _flipRightSController.reset();
       isAnimation = false;
       widget.refreshPageCallBack();
-      if(isLeft){
-        _flipLeftStep1Controller.reset();
-        _flipLeftStep2Controller.reset();
-      }else{
-        _flipRightStep1Controller.reset();
-        _flipRightStep2Controller.reset();
-      }
     }
   }
 
@@ -148,7 +126,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
                           return Transform(
                             alignment: Alignment.centerRight,
                             transform: Matrix4.identity()
-                              ..setEntry(3, 2, 0.001)
+                              ..setEntry(3, 2, 0.001)//3d效果
                               ..rotateY(
                                   isLeft ? 0 : _flipRightAnimationStep1.value),
                             child: child,
@@ -194,7 +172,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
                     alignment: Alignment.centerRight,
                     transform: Matrix4.identity()
                       ..setEntry(3, 2, 0.001)
-                      ..rotateY(isLeft ? _flipLeftAnimationStep2.value:0),
+                      ..rotateY( _flipLeftAnimationStep2.value),
                     child: child,
                   );
                 }),
@@ -207,7 +185,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
                     alignment: Alignment.centerLeft,
                     transform: Matrix4.identity()
                       ..setEntry(3, 2, 0.001)
-                      ..rotateY(isLeft ? 0:_flipRightAnimationStep2.value),
+                      ..rotateY(_flipRightAnimationStep2.value),
                     child: bottomRightChild,
                   );
                 })
@@ -230,11 +208,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
 
           isLeft = !isLeftView;
 
-          isLeft ? _flipLeftStep1Controller.forward() :_flipRightStep1Controller.forward();
-
-          // setState(() {
-          //
-          // });
+          isLeft ? _flipLeftController.forward() :_flipRightSController.forward();
         }
       },
       child: child,
