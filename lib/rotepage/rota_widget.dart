@@ -2,48 +2,55 @@ import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-typedef RefreshPageCallBack = void Function();
+typedef ItemBuilder = Widget Function(int index);
 
-class RotaWidget extends StatefulWidget {
-  final Widget topWidget;
-  final Widget bottomWidget;
-  final RefreshPageCallBack refreshPageCallBack;
+class RotaWidget<T> extends StatefulWidget {
+  final ItemBuilder itemBuilder;
+  final int itemCount;
 
-
-  RotaWidget({this.topWidget, this.bottomWidget,this.refreshPageCallBack});
+  RotaWidget({this.itemBuilder, this.itemCount});
   @override
   State<StatefulWidget> createState() => _RotaPageState();
 }
 
 class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
+  var currentTopIndex = 0;
+  var bottomLeftIndex = 0;
+  var bottomRightIndex = 0;
+
   ClipRect topLeftChild;
   ClipRect topRightChild;
   ClipRect bottomLeftChild;
   ClipRect bottomRightChild;
+  ClipRect leftRoteChild;
+  ClipRect rightRoteChild;
   AnimationController _flipLeftController, _flipRightSController;
   Animation _flipLeftAnimationStep1, _flipLeftAnimationStep2;
   Animation _flipRightAnimationStep1, _flipRightAnimationStep2;
   bool isLeft = true; /*往哪个方向翻转 true 向左 false 向右*/
 
-  @override
-  void didUpdateWidget(covariant RotaWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    contentChange();
-  }
+  void contentChange() {
+    bottomRightIndex = currentTopIndex + 1;
+    bottomLeftIndex = currentTopIndex - 1;
 
-  void contentChange(){
+    var bottomLeft =
+        widget.itemBuilder(bottomLeftIndex.clamp(0, widget.itemCount - 1));
+    var topWidget = widget.itemBuilder(currentTopIndex);
+    var bottomRight =
+        widget.itemBuilder(bottomRightIndex.clamp(0, widget.itemCount - 1));
+
     topLeftChild = ClipRect(
       child: Align(
         alignment: Alignment.centerLeft,
         widthFactor: 0.5,
-        child: widget.topWidget,
+        child: topWidget,
       ),
     );
     topRightChild = ClipRect(
       child: Align(
         alignment: Alignment.centerRight,
         widthFactor: 0.5,
-        child: widget.topWidget,
+        child: topWidget,
       ),
     );
 
@@ -51,7 +58,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
       child: Align(
         alignment: Alignment.centerLeft,
         widthFactor: 0.5,
-        child: widget.bottomWidget,
+        child: bottomLeft,
       ),
     );
 
@@ -59,10 +66,27 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
       child: Align(
         alignment: Alignment.centerRight,
         widthFactor: 0.5,
-        child: widget.bottomWidget,
+        child: bottomRight,
+      ),
+    );
+
+    leftRoteChild = ClipRect(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        widthFactor: 0.5,
+        child: bottomRight,
+      ),
+    );
+
+    rightRoteChild = ClipRect(
+      child: Align(
+        alignment: Alignment.centerRight,
+        widthFactor: 0.5,
+        child: bottomLeft,
       ),
     );
   }
+
   @override
   void initState() {
     super.initState();
@@ -78,7 +102,8 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
         AnimationController(vsync: this, duration: Duration(seconds: 2));
 
     _flipRightAnimationStep1 = Tween(begin: .0, end: -pi / 2).animate(
-        CurvedAnimation(parent: _flipRightSController, curve: Interval(.0, .5)));
+        CurvedAnimation(
+            parent: _flipRightSController, curve: Interval(.0, .5)));
     _flipRightAnimationStep2 = Tween(begin: pi / 2, end: 0.0).animate(
         CurvedAnimation(
             parent: _flipRightSController, curve: Interval(.5, 1.0)));
@@ -86,27 +111,33 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
     _flipLeftController.addStatusListener(step1StatusListener);
 
     _flipRightSController.addStatusListener(step1StatusListener);
-
-    contentChange();
   }
 
-  void step1StatusListener(AnimationStatus status){
-    if(status == AnimationStatus.forward){
+  bool isLastPage = false;
+  bool isFirstPage = true;
+  void step1StatusListener(AnimationStatus status) {
+    if (status == AnimationStatus.forward) {
       isAnimation = true;
-      setState(() {
-      });
+      setState(() {});
     }
 
-    if(status == AnimationStatus.completed){
-      isLeft ? _flipLeftController.reset(): _flipRightSController.reset();
+    if (status == AnimationStatus.completed) {
+      isLeft ? _flipLeftController.reset() : _flipRightSController.reset();
       isAnimation = false;
-      widget.refreshPageCallBack();
+      setState(() {
+        isLeft ? currentTopIndex++ : currentTopIndex--;
+
+        isLastPage = currentTopIndex == widget.itemCount - 1;
+        isFirstPage = currentTopIndex == 0;
+      });
     }
   }
 
   bool isAnimation = false;
   @override
   Widget build(BuildContext context) {
+    contentChange();
+
     return Stack(
       children: [
         Row(
@@ -126,7 +157,7 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
                           return Transform(
                             alignment: Alignment.centerRight,
                             transform: Matrix4.identity()
-                              ..setEntry(3, 2, 0.001)//3d效果
+                              ..setEntry(3, 2, 0.001) //3d效果
                               ..rotateY(
                                   isLeft ? 0 : _flipRightAnimationStep1.value),
                             child: child,
@@ -160,38 +191,37 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
         ),
 
         /*只做动画 不处理事件*/
-        isAnimation ?  Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-
-            AnimatedBuilder(
-                animation: _flipLeftAnimationStep2,
-                child: bottomLeftChild,
-                builder: (context, child) {
-                  return Transform(
-                    alignment: Alignment.centerRight,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.001)
-                      ..rotateY( _flipLeftAnimationStep2.value),
-                    child: child,
-                  );
-                }),
-
-            AnimatedBuilder(
-                animation: _flipRightAnimationStep2,
-                child: bottomRightChild,
-                builder: (context, child) {
-                  return Transform(
-                    alignment: Alignment.centerLeft,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.001)
-                      ..rotateY(_flipRightAnimationStep2.value),
-                    child: bottomRightChild,
-                  );
-                })
-
-          ],
-        ): SizedBox()
+        isAnimation
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  AnimatedBuilder(
+                      animation: _flipLeftAnimationStep2,
+                      child: leftRoteChild,
+                      builder: (context, child) {
+                        return Transform(
+                          alignment: Alignment.centerRight,
+                          transform: Matrix4.identity()
+                            ..setEntry(3, 2, 0.001)
+                            ..rotateY(_flipLeftAnimationStep2.value),
+                          child: child,
+                        );
+                      }),
+                  AnimatedBuilder(
+                      animation: _flipRightAnimationStep2,
+                      child: rightRoteChild,
+                      builder: (context, child) {
+                        return Transform(
+                          alignment: Alignment.centerLeft,
+                          transform: Matrix4.identity()
+                            ..setEntry(3, 2, 0.001)
+                            ..rotateY(_flipRightAnimationStep2.value),
+                          child: rightRoteChild,
+                        );
+                      })
+                ],
+              )
+            : SizedBox()
       ],
     );
   }
@@ -203,12 +233,18 @@ class _RotaPageState extends State<RotaWidget> with TickerProviderStateMixin {
         dx = 0.0;
       },
       onPanUpdate: (details) {
+        isLeft = !isLeftView;
+
+        /*最后一页不处理*/
+        if (isLeft && isLastPage) return;
+
+        if (!isLeft && isFirstPage) return;
+
         dx += details.delta.dx;
         if (dx.abs() > 100) {
-
-          isLeft = !isLeftView;
-
-          isLeft ? _flipLeftController.forward() :_flipRightSController.forward();
+          isLeft
+              ? _flipLeftController.forward()
+              : _flipRightSController.forward();
         }
       },
       child: child,

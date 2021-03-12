@@ -20,32 +20,22 @@ class HomePage  extends StatefulWidget{
 
 class _HomePageState extends State<HomePage>{
 
-  var data = ["1","2","3","5","5","5","5","2","3","1","2","3","1","2","3",];
+  var data = ["1","2","3","4"];
   var startIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    return RotaWidget(
-      topWidget: Container(
-        alignment:Alignment.center,
-        width: 300,
-        height: 300,
-        color: startIndex % 2 == 0 ? Colors.white : Colors.blue,
-        child: Text(data[startIndex]),
-      ),
-      bottomWidget: Container(
+    return RotaWidget<String>(
+      itemBuilder: (index){
+        return Container(
           alignment:Alignment.center,
           width: 300,
           height: 300,
-          color: startIndex % 2 == 0 ? Colors.blue : Colors.white,
-          child: Text(data[startIndex+1])
-      ),
-      refreshPageCallBack: (){
-        startIndex ++;
-        setState(() {
-
-        });
+          color: index % 2 == 0 ? Colors.white : Colors.blue,
+          child: Text(data[index]),
+        );
       },
+      itemCount: data.length,
     );
   }
 
